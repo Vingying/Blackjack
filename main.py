@@ -4,46 +4,84 @@ import numpy as np
 
 class Agent(object):
 
-    def __init__(self, n_obs, n_act, learning_rate, gamma):
-        self.n_obs = n_obs
+    def __init__(self, env, n_act, learning_rate, gamma):
+        self.qshape = [item.n for item in env] + [n_act]
         self.n_act = n_act
         self.learning_rate = learning_rate
         self.gamma = gamma
-        self.Q = np.zeros((n_obs, n_act))
+        self.Q = np.zeros(self.qshape)
         self.game_count = 0
+        self.itcnt_Q = np.zeros(self.qshape)
 
-    def clear(self):
-        self.game_count = 0
-
-    def epsilon_greedy(self, env, epsilon=0.1):
+    def epsilon_greedy(self, obs, epsilon, episode_id):
         x = np.random.uniform(0, 1)
-        if x < 1.0 - epsilon:
-            list_Q = self.Q[env, :]
-            max_Q = np.max(list_Q)
-            candidate_action = np.where(list_Q == max_Q)[0]
-            action = np.random.choice(candidate_action)
+        eps = max(0.05, epsilon - episode_id * 0.000003)
+        print(episode_id, eps)
+        if epsilon < 0:
+            eps = 0
+        if x < 1.0 - eps:
+            j = (obs[0], obs[1], int(obs[2]))
+            list_Q = self.Q[j]
+            action = np.argmax(list_Q)
         else:
             action = np.random.choice(self.n_act)
         return action
+        # return np.random.randint(0, 1)
 
-    def update_Q(self, env, action, reward, next_env, is_done):
-        predict = self.Q[env, action]
+    def get_sample(self, env, episode_id, epsilon):
+        sample_obs, sample_reward, sample_action = [], [], []
+        obs = env.reset()
+        sample_obs.append(obs)
+        is_done = False
+        self.game_count = 0
+        while not is_done:
+            act = self.epsilon_greedy(obs, episode_id=episode_id, epsilon=epsilon)
+            obs, reward, is_done, info = env.step(act)
+            if not is_done:
+                sample_obs.append(obs)
+            sample_action.append(act)
+            sample_reward.append(reward)
+            self.game_count += 1
+        return [sample_obs, sample_reward, sample_action]
+
+    def update_Q(self, data):
+        [sample_obs, sample_reward, sample_action] = data
+        G = 0
+        for i in range(len(sample_obs) - 1, -1, -1):
+            G = G * self.gamma + sample_reward[i]
+            if sample_obs[i] in sample_obs[:i] and sample_action[i] in sample_action[:i]:
+                continue
+            j = (sample_obs[i][0], sample_obs[i][1], sample_obs[i][2], sample_action[i])
+            self.itcnt_Q[j] += 1
+            self.Q[j] += (1 / (self.itcnt_Q[j])) * (G - self.Q[j])
+
+    def train_process(self, env, iteration_times=50000):
+        for episode_id in range(iteration_times):
+            data = self.get_sample(env, episode_id=episode_id, epsilon=0.14)
+            self.update_Q(data)
+
+    def test_process(self, env, test_times=5000):
+        win_count, draw_count, lose_count = 0, 0, 0
+        for test_id in range(test_times):
+            data = self.get_sample(env, epsilon=-1, episode_id=0)
+            if data[1][-1] > 0:
+                win_count += 1
+            elif data[1][-1] == 0:
+                draw_count += 1
+            else:
+                lose_count += 1
+        print('win: ' + str(win_count) + ' lose: ' + str(lose_count) + ' draw game: ' + str(draw_count))
+        print('win_rate: ' + str(win_count / test_times) + ' lose_rate: ' + str(
+            lose_count / test_times) + ' draw_rate: ' + str(draw_count / test_times))
 
 
 env = gym.make("Blackjack-v1", natural=True)
 agent = Agent(
-    env.observation_space.n,
+    env.observation_space,
     env.action_space.n,
     learning_rate=0.1,
-    gamma=0.9
+    gamma=1
 )
 
-
-def train_agent():
-
-
-def test_agent():
-
-
-train_agent()
-test_agent()
+agent.train_process(env, iteration_times=50000)
+agent.test_process(env, test_times=5000)
