@@ -80,7 +80,7 @@ agent = Agent(
     env.observation_space,
     env.action_space.n,
     learning_rate=0.1,
-    gamma=1
+    gamma=1.0
 )
 
 agent.train_process(env, iteration_times=50000)
