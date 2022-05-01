@@ -26,7 +26,6 @@ class Agent(object):
         else:
             action = np.random.choice(self.n_act)
         return action
-        # return np.random.randint(0, 1)
 
     def get_sample(self, env, episode_id, epsilon):
         sample_obs, sample_reward, sample_action = [], [], []
@@ -80,7 +79,7 @@ agent = Agent(
     env.observation_space,
     env.action_space.n,
     learning_rate=0.1,
-    gamma=1.0
+    gamma=0.1
 )
 
 agent.train_process(env, iteration_times=50000)
