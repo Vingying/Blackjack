@@ -1,5 +1,7 @@
 import gym
 import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 
 class Agent(object):
@@ -56,7 +58,7 @@ class Agent(object):
 
     def train_process(self, env, iteration_times=50000):
         for episode_id in range(iteration_times):
-            data = self.get_sample(env, episode_id=episode_id, epsilon=0.14)
+            data = self.get_sample(env, episode_id=episode_id, epsilon=0.15)
             self.update_Q(data)
 
     def test_process(self, env, test_times=5000):
@@ -69,9 +71,28 @@ class Agent(object):
                 draw_count += 1
             else:
                 lose_count += 1
-        print('win: ' + str(win_count) + ' lose: ' + str(lose_count) + ' draw game: ' + str(draw_count))
+        print("\n==================TEST RESULT==================")
+        print('win: ' + str(win_count) + ' lose: ' + str(lose_count) + ' draw: ' + str(draw_count))
         print('win_rate: ' + str(win_count / test_times) + ' lose_rate: ' + str(
             lose_count / test_times) + ' draw_rate: ' + str(draw_count / test_times))
+        print("===============================================\n")
+
+    def plot_figure(self):
+        x = np.arange(0, 31, 1)
+        y = np.arange(0, 10, 1)
+        mx, my = np.meshgrid(x, y)
+
+        def f(X, Y, c):
+            return (self.Q[X, Y, c, 0] + self.Q[X, Y, c, 1]) / 2
+
+        z0 = f(mx, my, 0)
+        z1 = f(mx, my, 1)
+
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        ax.plot_surface(mx, my, z0)
+
+        plt.show()
 
 
 env = gym.make("Blackjack-v1", natural=True)
@@ -84,3 +105,4 @@ agent = Agent(
 
 agent.train_process(env, iteration_times=50000)
 agent.test_process(env, test_times=5000)
+agent.plot_figure()
